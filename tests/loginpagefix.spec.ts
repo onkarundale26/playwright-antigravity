@@ -27,6 +27,7 @@ test('user is able to login to app test', async ({ loginPage, homePage }) => {
 //DD_1. sequence mode -- only 1 test is running with test data one by one using testData from fixture
 test('login to app using wrong credentials with Data driven test', async ({ loginPage, testData }) => {
     for (let row of testData) {
+        await loginPage.goToLoginPage();
         await loginPage.doLogin(row.username, row.password);
         expect(await loginPage.isInvalidLoginErrorDisplayed()).toBeTruthy();
     }

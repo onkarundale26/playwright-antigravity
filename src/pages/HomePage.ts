@@ -31,7 +31,8 @@ export class HomePage extends BasePage {
     async doSearch(searchkey: string): Promise<void> {
         console.log(`search key: ${searchkey}`);
         await this.searchBox.fill(searchkey);
-        await this.searchIcon.click();
+        await this.searchBox.press('Enter');
+        await this.page.waitForLoadState('load');
     }
 
 }
