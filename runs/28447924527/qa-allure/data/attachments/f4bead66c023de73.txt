@@ -1,0 +1,7 @@
+{
+  id: 8529966,
+  name: 'uday101',
+  email: 'automation_1782826149986@open.com',
+  gender: 'male',
+  status: 'inactive'
+}

@@ -1,0 +1,2 @@
+user creds: onkar1@test.com
+home page headers:  [ 'My Account', 'My Orders', 'My Affiliate Account', 'Newsletter' ]
