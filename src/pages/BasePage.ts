@@ -24,12 +24,7 @@ export class BasePage {
 
     //common locators/functionalities/actions
     async isLogoVisible(): Promise<boolean> {
-        try {
-            await this.logo.waitFor({ state: 'visible', timeout: 2000 });
-            return await this.logo.isVisible();
-        } catch {
-            return false;
-        }
+        return this.logo.isVisible();
     }
 
     async isSearchBoxVisible(): Promise<boolean> {
