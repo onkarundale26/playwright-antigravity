@@ -1,4 +1,4 @@
-name: Basic E2E CI/CD Multi-Environment Pipeline
+name: NonProd E2E CI/CD Pipeline
 
 on:
   workflow_dispatch:

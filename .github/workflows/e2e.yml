@@ -12,6 +12,7 @@ on:
           - dev
           - qa
           - stage
+          - prod
 
 jobs:
   test-dev:
@@ -46,8 +47,8 @@ jobs:
         if: steps.pw-cache-dev.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      - name: Run Playwright tests on DEV
-        run: npx playwright test
+      - name: Run Playwright tests on DEV (@sanity)
+        run: npx playwright test --grep @sanity
         env:
           ENV: dev
           BASE_URL: ${{ secrets.BASE_URL }}
@@ -82,7 +83,7 @@ jobs:
   test-qa:
     name: QA Environment Tests
     needs: test-dev
-    if: github.event.inputs.environment == 'qa' || github.event.inputs.environment == 'stage'
+    if: github.event.inputs.environment == 'qa' || github.event.inputs.environment == 'stage' || github.event.inputs.environment == 'prod'
     runs-on: ubuntu-latest
     environment: qa
     steps:
@@ -113,7 +114,7 @@ jobs:
         if: steps.pw-cache-qa.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      - name: Run Playwright tests on QA
+      - name: Run Playwright tests on QA (All Tests)
         run: npx playwright test
         env:
           ENV: qa
@@ -149,7 +150,7 @@ jobs:
   test-stage:
     name: STAGE Environment Tests
     needs: test-qa
-    if: github.event.inputs.environment == 'stage'
+    if: github.event.inputs.environment == 'stage' || github.event.inputs.environment == 'prod'
     runs-on: ubuntu-latest
     environment: stage
     steps:
@@ -180,8 +181,8 @@ jobs:
         if: steps.pw-cache-stage.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      - name: Run Playwright tests on STAGE
-        run: npx playwright test
+      - name: Run Playwright tests on STAGE (@regression)
+        run: npx playwright test --grep @regression
         env:
           ENV: stage
           BASE_URL: ${{ secrets.BASE_URL }}
@@ -213,9 +214,76 @@ jobs:
           path: allure-report/
           retention-days: 14
 
+  test-prod:
+    name: PROD Environment Tests
+    needs: test-stage
+    if: github.event.inputs.environment == 'prod'
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'npm'
+
+      - name: Cache Playwright browsers
+        id: pw-cache-prod
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('package-lock.json') }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers (with OS deps)
+        if: steps.pw-cache-prod.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright OS deps only
+        if: steps.pw-cache-prod.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Run Playwright tests on PROD (@smoke)
+        run: npx playwright test --grep @smoke
+        env:
+          ENV: prod
+          BASE_URL: ${{ secrets.BASE_URL }}
+          APPUSERNAME: ${{ secrets.APPUSERNAME }}
+          PASSWORD: ${{ secrets.PASSWORD }}
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          API_TOKEN: ${{ secrets.API_TOKEN }}
+          OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
+          OAUTH_CLIENT_SECRET: ${{ secrets.OAUTH_CLIENT_SECRET }}
+          GRANT_TYPE: ${{ secrets.GRANT_TYPE }}
+
+      - name: Generate Allure Report
+        if: always()
+        run: npm run allure:generate
+
+      - name: Upload PROD HTML Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prod-playwright-html-report
+          path: reports/html-report/
+          retention-days: 14
+
+      - name: Upload PROD Allure Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prod-playwright-allure-report
+          path: allure-report/
+          retention-days: 14
+
   notify:
     name: Publish Reports + Notify
-    needs: [test-dev, test-qa, test-stage]
+    needs: [test-dev, test-qa, test-stage, test-prod]
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -229,17 +297,20 @@ jobs:
           DEV="${{ needs.test-dev.result }}"
           QA="${{ needs.test-qa.result }}"
           STAGE="${{ needs.test-stage.result }}"
+          PROD="${{ needs.test-prod.result }}"
 
           get_emoji() { if [ "$1" = "success" ]; then echo "✅"; elif [ "$1" = "skipped" ]; then echo "⏭️"; else echo "❌"; fi; }
 
           echo "dev=$(get_emoji $DEV)" >> $GITHUB_OUTPUT
           echo "qa=$(get_emoji $QA)" >> $GITHUB_OUTPUT
           echo "stage=$(get_emoji $STAGE)" >> $GITHUB_OUTPUT
+          echo "prod=$(get_emoji $PROD)" >> $GITHUB_OUTPUT
 
           if ([ "$DEV" = "success" ] || [ "$DEV" = "skipped" ]) && \
              ([ "$QA" = "success" ] || [ "$QA" = "skipped" ]) && \
              ([ "$STAGE" = "success" ] || [ "$STAGE" = "skipped" ]) && \
-             ([ "$DEV" = "success" ] || [ "$QA" = "success" ] || [ "$STAGE" = "success" ]); then
+             ([ "$PROD" = "success" ] || [ "$PROD" = "skipped" ]) && \
+             ([ "$DEV" = "success" ] || [ "$QA" = "success" ] || [ "$STAGE" = "success" ] || [ "$PROD" = "success" ]); then
             echo "overall=✅ ALL PASSED" >> $GITHUB_OUTPUT
           else
             echo "overall=❌ SOME FAILURES" >> $GITHUB_OUTPUT
@@ -290,7 +361,7 @@ jobs:
               </div>
 
               <div class="card">
-                <h2>🔵 QA — Sanity/Regression</h2>
+                <h2>🔵 QA — All Tests</h2>
                 <div class="links">
                   <a class="btn html-btn" href="qa-html/index.html">📊 HTML Report</a>
                   <a class="btn allure-btn" href="qa-allure/index.html">📈 Allure Report</a>
@@ -298,10 +369,18 @@ jobs:
               </div>
 
               <div class="card">
-                <h2>🟡 STAGE — Sanity</h2>
+                <h2>🟡 STAGE — Regression</h2>
                 <div class="links">
                   <a class="btn html-btn" href="stage-html/index.html">📊 HTML Report</a>
                   <a class="btn allure-btn" href="stage-allure/index.html">📈 Allure Report</a>
+                </div>
+              </div>
+
+              <div class="card">
+                <h2>🔴 PROD — Smoke</h2>
+                <div class="links">
+                  <a class="btn html-btn" href="prod-html/index.html">📊 HTML Report</a>
+                  <a class="btn allure-btn" href="prod-allure/index.html">📈 Allure Report</a>
                 </div>
               </div>
             </div>
@@ -320,6 +399,8 @@ jobs:
           cp -r all-reports/qa-playwright-allure-report/ pages-deploy/runs/${{ github.run_id }}/qa-allure/ 2>/dev/null || true
           cp -r all-reports/stage-playwright-html-report/ pages-deploy/runs/${{ github.run_id }}/stage-html/ 2>/dev/null || true
           cp -r all-reports/stage-playwright-allure-report/ pages-deploy/runs/${{ github.run_id }}/stage-allure/ 2>/dev/null || true
+          cp -r all-reports/prod-playwright-html-report/ pages-deploy/runs/${{ github.run_id }}/prod-html/ 2>/dev/null || true
+          cp -r all-reports/prod-playwright-allure-report/ pages-deploy/runs/${{ github.run_id }}/prod-allure/ 2>/dev/null || true
 
           echo "Reports organized ✅"
           ls -la pages-deploy/runs/${{ github.run_id }}/
@@ -376,9 +457,10 @@ jobs:
                 </div>
                 <table>
                   <tr><th>Stage</th><th>Test Suite</th><th>Status</th></tr>
-                  <tr><td class="env-name">🟢 DEV</td><td class="test-type">Sanity / E2E Tests</td><td class="status">${{ steps.status.outputs.dev }}</td></tr>
-                  <tr><td class="env-name">🔵 QA</td><td class="test-type">Sanity / E2E Tests</td><td class="status">${{ steps.status.outputs.qa }}</td></tr>
-                  <tr><td class="env-name">🟡 STAGE</td><td class="test-type">Sanity / E2E Tests</td><td class="status">${{ steps.status.outputs.stage }}</td></tr>
+                  <tr><td class="env-name">🟢 DEV</td><td class="test-type">Sanity (@sanity)</td><td class="status">${{ steps.status.outputs.dev }}</td></tr>
+                  <tr><td class="env-name">🔵 QA</td><td class="test-type">All Tests</td><td class="status">${{ steps.status.outputs.qa }}</td></tr>
+                  <tr><td class="env-name">🟡 STAGE</td><td class="test-type">Regression (@regression)</td><td class="status">${{ steps.status.outputs.stage }}</td></tr>
+                  <tr><td class="env-name">🔴 PROD</td><td class="test-type">Smoke (@smoke)</td><td class="status">${{ steps.status.outputs.prod }}</td></tr>
                 </table>
               </div>
               <div class="reports">
@@ -427,7 +509,7 @@ jobs:
                 { "type": "divider" },
                 {
                   "type": "section",
-                  "text": { "type": "mrkdwn", "text": "${{ steps.status.outputs.dev }}  *DEV* — Sanity / E2E Tests\n${{ steps.status.outputs.qa }}  *QA* — Sanity / E2E Tests\n${{ steps.status.outputs.stage }}  *STAGE* — Sanity / E2E Tests" }
+                  "text": { "type": "mrkdwn", "text": "${{ steps.status.outputs.dev }}  *DEV* — Sanity (@sanity)\n${{ steps.status.outputs.qa }}  *QA* — All Tests\n${{ steps.status.outputs.stage }}  *STAGE* — Regression (@regression)\n${{ steps.status.outputs.prod }}  *PROD* — Smoke (@smoke)" }
                 },
                 { "type": "divider" },
                 {
@@ -459,5 +541,6 @@ jobs:
           echo "  DEV Sanity:      ${{ needs.test-dev.result }}"
           echo "  QA Regression:   ${{ needs.test-qa.result }}"
           echo "  STAGE Sanity:    ${{ needs.test-stage.result }}"
+          echo "  PROD Smoke:      ${{ needs.test-prod.result }}"
           echo "  Reports:         ${{ steps.status.outputs.report_url }}/index.html"
           echo "═══════════════════════════════════════════"
