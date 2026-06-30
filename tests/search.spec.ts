@@ -19,12 +19,15 @@ for (const row of productData) {
 };
 
 for (const row of productData) {
-    if (row.productname === 'null' || Number(row.resultcount) === 0) {
-        continue;
-    }
     test(`verify user is able to land on the product page - ${row.searchkey} - ${row.productname}`, async ({ homePage, searchResultsPage, page }) => {
         await homePage.doSearch(row.searchkey);
         await searchResultsPage.selectProduct(row.productname);
-        expect(await page.title()).toBe(row.productname);
+        
+        const trimmedName = row.productname.trim();
+        if (trimmedName === 'null') {
+            expect(await page.title()).toContain('Search');
+        } else {
+            expect(await page.title()).toBe(trimmedName);
+        }
     });
 };

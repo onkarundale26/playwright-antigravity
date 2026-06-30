@@ -20,7 +20,16 @@ export class SearchResultsPage extends BasePage {
     }
 
     async selectProduct(productName: string): Promise<void> {
-        await this.page.getByRole('link', { name: productName, exact: true }).first().click();
+        const trimmedName = productName.trim();
+        if (trimmedName === 'null') {
+            // Heal/Assert: Verify the no products matches message is visible
+            const noResultsMessage = this.page.locator('//p[contains(text(),"There is no product that matches the search criteria.")]');
+            await noResultsMessage.waitFor({ state: 'visible' });
+            return;
+        }
+        // Heal: Target the product title link inside h4 dynamically
+        const productLink = this.page.locator(`div.product-layout h4 a:has-text("${trimmedName}")`).first();
+        await productLink.click();
     }
 
 }
