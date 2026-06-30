@@ -1,0 +1,121 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: api/intercept.spec.ts >> intercept and log requests
+- Location: tests/api/intercept.spec.ts:9:1
+
+# Error details
+
+```
+Test timeout of 30000ms exceeded.
+```
+
+```
+Error: page.goto: net::ERR_ABORTED; maybe frame was detached?
+Call log:
+  - navigating to "https://naveenautomationlabs.com/opencart/index.php?route=common/home", waiting until "load"
+
+```
+
+# Test source
+
+```ts
+  1  | import { test, expect } from '@playwright/test';
+  2  | 
+  3  | 
+  4  | //web app --> intercept the network calls and log them...
+  5  | //** = wildcard -- matched all the URLs...
+  6  | 
+  7  | 
+  8  | //intercept the network calls...
+  9  | test('intercept and log requests', async ({ page }) => {
+  10 | 
+  11 |     await page.route('**/*', async (route) => {
+  12 |         console.log(route.request().method(), route.request().url());
+  13 |         await route.continue(); //url1 -- capture and continue./..url2 -- capture -- contiue
+  14 |     });
+  15 | 
+  16 |     //login steps web
+> 17 |     await page.goto('https://naveenautomationlabs.com/opencart/index.php?route=common/home');
+     |                ^ Error: page.goto: net::ERR_ABORTED; maybe frame was detached?
+  18 | });
+  19 | 
+  20 | 
+  21 | //intercept with mocking:
+  22 | //mocking: fake data/response
+  23 | 
+  24 | test('mock search data api', async ({ page }) => {
+  25 |     let fakeProducts = [
+  26 |         { name: 'Fake MacBook Pro', price: "$599" },
+  27 |         { name: 'Fake iphone 20', price: "$999" }
+  28 |     ];
+  29 | 
+  30 |     await page.route('**/index.php?route=product/search&search=macbook', (route) => {
+  31 |         route.fulfill({
+  32 |             status: 200,
+  33 |             contentType: 'application/json',
+  34 |             body: JSON.stringify(fakeProducts),
+  35 |         });
+  36 |     });
+  37 | 
+  38 |     await page.goto('https://abc.com/index.php?route=product/search&search=macbook');
+  39 | 
+  40 | 
+  41 |     let fakeJson = await page.evaluate(async () => {
+  42 |         let fakeRes = await fetch('https://abc.com/index.php?route=product/search&search=macbook')
+  43 |         return await fakeRes.json();
+  44 |     });
+  45 | 
+  46 |     console.log('fake json response:', fakeJson);
+  47 | });
+  48 | 
+  49 | 
+  50 | 
+  51 | 
+  52 | 
+  53 | test('mock search page with fake HTML', async ({ page }) => {
+  54 | 
+  55 |     await page.route('**/index.php?route=product/search&search=macbook', (route) => {
+  56 |         route.fulfill({
+  57 |             status: 200,
+  58 |             contentType: 'text/html',
+  59 |             body: `
+  60 |                 <html>
+  61 |                 <body>
+  62 |                     <h1>Search Results</h1>
+  63 |                     <div class="product-layout">
+  64 |                         <h4><a href="#">Fake MacBook Pro</a></h4>
+  65 |                         <p class="price">$599</p>
+  66 |                     </div>
+  67 |                     <div class="product-layout">
+  68 |                         <h4><a href="#">Fake iPhone 20</a></h4>
+  69 |                         <p class="price">$999</p>
+  70 |                     </div>
+  71 |                 </body>
+  72 |                 </html>
+  73 |             `,
+  74 |         });
+  75 |     });
+  76 | 
+  77 |     await page.goto('https://naveenautomationlabs.com/opencart/index.php?route=product/search&search=macbook');
+  78 | 
+  79 |     // now assert on the fake HTML
+  80 |     const heading = await page.textContent('h1');
+  81 |     expect(heading).toBe('Search Results');
+  82 | 
+  83 |     const products = await page.locator('.product-layout h4').allTextContents();
+  84 |     expect(products).toEqual(["Fake MacBook Pro", "Fake iPhone 20"]);
+  85 | 
+  86 |     const prices = await page.locator('.price').allTextContents();
+  87 |     expect(prices).toEqual(["$599", "$999"]);
+  88 | 
+  89 | 
+  90 | 
+  91 | 
+  92 | });
+```
