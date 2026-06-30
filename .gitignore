@@ -31,3 +31,7 @@ Thumbs.db
 reports/screenshot/
 github-logs/
 
+# Local Jenkins
+jenkins/
+
+
