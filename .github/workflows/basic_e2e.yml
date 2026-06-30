@@ -1,0 +1,202 @@
+name: Basic E2E CI/CD Multi-Environment Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Run pipeline up to environment:'
+        required: true
+        default: 'qa'
+        type: choice
+        options:
+          - dev
+          - qa
+          - stage
+
+jobs:
+  test-dev:
+    name: DEV Environment Tests
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'npm'
+
+      - name: Cache Playwright browsers
+        id: pw-cache-dev
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('package-lock.json') }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers (with OS deps)
+        if: steps.pw-cache-dev.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright OS deps only
+        if: steps.pw-cache-dev.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Run Playwright tests on DEV
+        run: npx playwright test
+        env:
+          ENV: dev
+          BASE_URL: ${{ secrets.BASE_URL }}
+          APPUSERNAME: ${{ secrets.APPUSERNAME }}
+          PASSWORD: ${{ secrets.PASSWORD }}
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          API_TOKEN: ${{ secrets.API_TOKEN }}
+          OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
+          OAUTH_CLIENT_SECRET: ${{ secrets.OAUTH_CLIENT_SECRET }}
+          GRANT_TYPE: ${{ secrets.GRANT_TYPE }}
+
+      - name: Upload DEV HTML Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-playwright-html-report
+          path: reports/html-report/
+          retention-days: 14
+
+      - name: Upload DEV Allure Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-allure-results
+          path: allure-results/
+          retention-days: 14
+
+  test-qa:
+    name: QA Environment Tests
+    needs: test-dev
+    if: github.event.inputs.environment == 'qa' || github.event.inputs.environment == 'stage'
+    runs-on: ubuntu-latest
+    environment: qa
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'npm'
+
+      - name: Cache Playwright browsers
+        id: pw-cache-qa
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('package-lock.json') }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers (with OS deps)
+        if: steps.pw-cache-qa.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright OS deps only
+        if: steps.pw-cache-qa.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Run Playwright tests on QA
+        run: npx playwright test
+        env:
+          ENV: qa
+          BASE_URL: ${{ secrets.BASE_URL }}
+          APPUSERNAME: ${{ secrets.APPUSERNAME }}
+          PASSWORD: ${{ secrets.PASSWORD }}
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          API_TOKEN: ${{ secrets.API_TOKEN }}
+          OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
+          OAUTH_CLIENT_SECRET: ${{ secrets.OAUTH_CLIENT_SECRET }}
+          GRANT_TYPE: ${{ secrets.GRANT_TYPE }}
+
+      - name: Upload QA HTML Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-playwright-html-report
+          path: reports/html-report/
+          retention-days: 14
+
+      - name: Upload QA Allure Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-allure-results
+          path: allure-results/
+          retention-days: 14
+
+  test-stage:
+    name: STAGE Environment Tests
+    needs: test-qa
+    if: github.event.inputs.environment == 'stage'
+    runs-on: ubuntu-latest
+    environment: stage
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'npm'
+
+      - name: Cache Playwright browsers
+        id: pw-cache-stage
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('package-lock.json') }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers (with OS deps)
+        if: steps.pw-cache-stage.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright OS deps only
+        if: steps.pw-cache-stage.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Run Playwright tests on STAGE
+        run: npx playwright test
+        env:
+          ENV: stage
+          BASE_URL: ${{ secrets.BASE_URL }}
+          APPUSERNAME: ${{ secrets.APPUSERNAME }}
+          PASSWORD: ${{ secrets.PASSWORD }}
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          API_TOKEN: ${{ secrets.API_TOKEN }}
+          OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
+          OAUTH_CLIENT_SECRET: ${{ secrets.OAUTH_CLIENT_SECRET }}
+          GRANT_TYPE: ${{ secrets.GRANT_TYPE }}
+
+      - name: Upload STAGE HTML Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage-playwright-html-report
+          path: reports/html-report/
+          retention-days: 14
+
+      - name: Upload STAGE Allure Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage-allure-results
+          path: allure-results/
+          retention-days: 14
