@@ -44,7 +44,12 @@ export class LoginPage extends BasePage {
     }
 
     async isInvalidLoginErrorDisplayed(): Promise<boolean> {
-        return await this.loginErrorMessage.isVisible();
+        try {
+            await this.loginErrorMessage.waitFor({ state: 'visible', timeout: 2000 });
+            return await this.loginErrorMessage.isVisible();
+        } catch {
+            return false;
+        }
     }
 
 
