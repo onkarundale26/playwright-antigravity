@@ -34,6 +34,7 @@ pipeline {
 
     environment {
         SLACK_CHANNEL = '#new-channel'
+        PATH = "C:\\Program Files\\Git\\bin;C:\\Program Files\\Git\\usr\\bin;${env.PATH}"
     }
 
     options {
@@ -74,8 +75,12 @@ pipeline {
                 echo "========================================="
                 echo "  Installing Playwright Dependencies"
                 echo "========================================="
-                sh 'npm ci'
-                sh 'npx playwright install --with-deps chromium'
+                dir('qa-tests') {
+                    git url: 'https://github.com/onkarundale26/playwright-antigravity.git',
+                        branch: 'main'
+                    sh 'npm ci'
+                    sh 'npx playwright install --with-deps chromium'
+                }
             }
         }
 
@@ -278,7 +283,7 @@ pipeline {
             steps {
                 input message: 'Deploy to PROD?',
                     ok: 'Yes, Deploy!',
-                    submitter: 'onkar'
+                    submitter: 'admin,onkar'
             }
         }
 
