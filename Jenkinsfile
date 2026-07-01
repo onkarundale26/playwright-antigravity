@@ -114,9 +114,7 @@ pipeline {
             post {
                 always {
                     bat 'if not exist "reports-dev\\html" mkdir "reports-dev\\html"'
-                    bat 'if not exist "reports-dev\\allure" mkdir "reports-dev\\allure"'
                     bat 'xcopy /s /e /y "reports\\html-report\\*" "reports-dev\\html\\" || exit 0'
-                    bat 'allure generate allure-results --clean -o reports-dev/allure || exit 0'
                     publishHTML(target: [
                         reportName: 'DEV Sanity - PW HTML Report',
                         reportDir: 'reports-dev/html',
@@ -124,13 +122,7 @@ pipeline {
                         keepAll: true,
                         alwaysLinkToLastBuild: true
                     ])
-                    publishHTML(target: [
-                        reportName: 'DEV Sanity - Allure Report',
-                        reportDir: 'reports-dev/allure',
-                        reportFiles: 'index.html',
-                        keepAll: true,
-                        alwaysLinkToLastBuild: true
-                    ])
+                    allure includeProperties: false, jdk: '', results: [[path: 'allure-results']]
                 }
             }
         }
@@ -169,9 +161,7 @@ pipeline {
             post {
                 always {
                     bat 'if not exist "reports-qa\\html" mkdir "reports-qa\\html"'
-                    bat 'if not exist "reports-qa\\allure" mkdir "reports-qa\\allure"'
                     bat 'xcopy /s /e /y "reports\\html-report\\*" "reports-qa\\html\\" || exit 0'
-                    bat 'allure generate allure-results --clean -o reports-qa/allure || exit 0'
                     publishHTML(target: [
                         reportName: 'QA Regression - PW HTML Report',
                         reportDir: 'reports-qa/html',
@@ -179,13 +169,7 @@ pipeline {
                         keepAll: true,
                         alwaysLinkToLastBuild: true
                     ])
-                    publishHTML(target: [
-                        reportName: 'QA Regression - Allure Report',
-                        reportDir: 'reports-qa/allure',
-                        reportFiles: 'index.html',
-                        keepAll: true,
-                        alwaysLinkToLastBuild: true
-                    ])
+                    allure includeProperties: false, jdk: '', results: [[path: 'allure-results']]
                 }
             }
         }
@@ -224,9 +208,7 @@ pipeline {
             post {
                 always {
                     bat 'if not exist "reports-stage\\html" mkdir "reports-stage\\html"'
-                    bat 'if not exist "reports-stage\\allure" mkdir "reports-stage\\allure"'
                     bat 'xcopy /s /e /y "reports\\html-report\\*" "reports-stage\\html\\" || exit 0'
-                    bat 'allure generate allure-results --clean -o reports-stage/allure || exit 0'
                     publishHTML(target: [
                         reportName: 'STAGE Sanity - PW HTML Report',
                         reportDir: 'reports-stage/html',
@@ -234,13 +216,7 @@ pipeline {
                         keepAll: true,
                         alwaysLinkToLastBuild: true
                     ])
-                    publishHTML(target: [
-                        reportName: 'STAGE Sanity - Allure Report',
-                        reportDir: 'reports-stage/allure',
-                        reportFiles: 'index.html',
-                        keepAll: true,
-                        alwaysLinkToLastBuild: true
-                    ])
+                    allure includeProperties: false, jdk: '', results: [[path: 'allure-results']]
                 }
             }
         }
@@ -287,9 +263,7 @@ pipeline {
             post {
                 always {
                     bat 'if not exist "reports-prod\\html" mkdir "reports-prod\\html"'
-                    bat 'if not exist "reports-prod\\allure" mkdir "reports-prod\\allure"'
                     bat 'xcopy /s /e /y "reports\\html-report\\*" "reports-prod\\html\\" || exit 0'
-                    bat 'allure generate allure-results --clean -o reports-prod/allure || exit 0'
                     publishHTML(target: [
                         reportName: 'PROD Smoke - PW HTML Report',
                         reportDir: 'reports-prod/html',
@@ -297,13 +271,7 @@ pipeline {
                         keepAll: true,
                         alwaysLinkToLastBuild: true
                     ])
-                    publishHTML(target: [
-                        reportName: 'PROD Smoke - Allure Report',
-                        reportDir: 'reports-prod/allure',
-                        reportFiles: 'index.html',
-                        keepAll: true,
-                        alwaysLinkToLastBuild: true
-                    ])
+                    allure includeProperties: false, jdk: '', results: [[path: 'allure-results']]
                 }
             }
         }
