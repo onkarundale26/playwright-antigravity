@@ -1,0 +1,5 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"","45","@smoke @sanity user is able to login to app test","chromium","2026-07-07","failed","2026-07-07","","loginpagefix.spec.ts","",""
+"","43","@smoke @sanity user is able to login to app test","chromium","2026-07-07","failed","2026-07-07","","loginpage.spec.ts","",""
+"","44","@sanity @smoke comp logo exists on product page","chromium","2026-07-07","failed","2026-07-07","","productpage.spec.ts","",""
+"","42","@smoke footers exist on product page","chromium","2026-07-07","failed","2026-07-07","","productpage.spec.ts","",""
