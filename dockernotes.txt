@@ -1,0 +1,13 @@
+docker run --rm `
+  -v "${PWD}:/app" `
+  -w /app `
+  -e CI=true `
+  mcr.microsoft.com/playwright:v1.60.0 `
+  npx playwright test --project=chromium
+
+============================
+
+docker build -t my-playwright-app .
+
+==========================
+
