@@ -56,7 +56,7 @@ pipeline {
                 dir('dev-app') {
                     git url: 'https://github.com/jglick/simple-maven-project-with-tests.git',
                         branch: 'master'
-                    sh 'mvn clean install -Dmaven.test.failure.ignore=true'
+                    bat 'mvn clean install -Dmaven.test.failure.ignore=true'
                 }
             }
             post {
@@ -74,12 +74,8 @@ pipeline {
                 echo "========================================="
                 echo "  Building Playwright Docker Image"
                 echo "========================================="
-                dir('qa-tests') {
-                    git url: 'https://github.com/naveenanimation20/OpenCartWebAPIFramework.git',
-                        branch: 'main'
-                    sh "docker build -t ${DOCKER_IMAGE} ."
-                }
-                sh "docker images | grep ${DOCKER_IMAGE}"
+                bat "docker build -t ${DOCKER_IMAGE} ."
+                bat "docker images | findstr ${DOCKER_IMAGE}"
             }
         }
 
@@ -97,39 +93,37 @@ pipeline {
                 echo "========================================="
                 echo "  Running SANITY @smoke on DEV (Docker)"
                 echo "========================================="
-                sh 'mkdir -p reports-dev/html allure-results-dev'
+                bat 'if not exist "reports-dev\\html" mkdir "reports-dev\\html" && if not exist "allure-results-dev" mkdir "allure-results-dev"'
                 withCredentials([
                     usernamePassword(credentialsId: 'dev-credentials',
-                        usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD'),
+                        usernameVariable: 'APPUSERNAME', passwordVariable: 'PASSWORD'),
                     string(credentialsId: 'api-token', variable: 'API_TOKEN'),
                     string(credentialsId: 'oauth-client-id', variable: 'OAUTH_CLIENT_ID'),
                     string(credentialsId: 'oauth-client-secret', variable: 'OAUTH_CLIENT_SECRET'),
                     string(credentialsId: 'dev-base-url', variable: 'BASE_URL'),
                     string(credentialsId: 'api-base-url', variable: 'API_BASE_URL')
                 ]) {
-                    sh """
-                        docker run --rm \
-                            -e CI=true \
-                            -e ENV=dev \
-                            -e BASE_URL=${BASE_URL} \
-                            -e USERNAME=${USERNAME} \
-                            -e PASSWORD=${PASSWORD} \
-                            -e API_BASE_URL=${API_BASE_URL} \
-                            -e API_TOKEN=${API_TOKEN} \
-                            -e OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID} \
-                            -e OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET} \
-                            -e GRANT_TYPE=client_credentials \
-                            -v \${WORKSPACE}/reports-dev/html:/app/reports/html-report \
-                            -v \${WORKSPACE}/allure-results-dev:/app/allure-results \
-                            ${DOCKER_IMAGE} \
+                    bat """
+                        docker run --rm ^
+                            -e CI=true ^
+                            -e ENV=dev ^
+                            -e BASE_URL=${BASE_URL} ^
+                            -e APPUSERNAME=${APPUSERNAME} ^
+                            -e PASSWORD=${PASSWORD} ^
+                            -e API_BASE_URL=${API_BASE_URL} ^
+                            -e API_TOKEN=${API_TOKEN} ^
+                            -e OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID} ^
+                            -e OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET} ^
+                            -e GRANT_TYPE=client_credentials ^
+                            -v "%WORKSPACE%/reports-dev/html:/app/reports/html-report" ^
+                            -v "%WORKSPACE%/allure-results-dev:/app/allure-results" ^
+                            ${DOCKER_IMAGE} ^
                             npx playwright test --project=chromium --grep @smoke
                     """
                 }
             }
             post {
                 always {
-                    sh 'mkdir -p reports-dev/allure'
-                    sh 'npx allure generate allure-results-dev --clean -o reports-dev/allure || true'
                     publishHTML(target: [
                         reportName: 'DEV Sanity - PW HTML Report',
                         reportDir: 'reports-dev/html',
@@ -137,13 +131,7 @@ pipeline {
                         keepAll: true,
                         alwaysLinkToLastBuild: true
                     ])
-                    publishHTML(target: [
-                        reportName: 'DEV Sanity - Allure Report',
-                        reportDir: 'reports-dev/allure',
-                        reportFiles: 'index.html',
-                        keepAll: true,
-                        alwaysLinkToLastBuild: true
-                    ])
+                    allure includeProperties: false, jdk: '', results: [[path: 'allure-results-dev']]
                 }
             }
         }
@@ -162,39 +150,37 @@ pipeline {
                 echo "========================================="
                 echo "  Running REGRESSION on QA (Docker)"
                 echo "========================================="
-                sh 'mkdir -p reports-qa/html allure-results-qa'
+                bat 'if not exist "reports-qa\\html" mkdir "reports-qa\\html" && if not exist "allure-results-qa" mkdir "allure-results-qa"'
                 withCredentials([
                     usernamePassword(credentialsId: 'qa-credentials',
-                        usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD'),
+                        usernameVariable: 'APPUSERNAME', passwordVariable: 'PASSWORD'),
                     string(credentialsId: 'api-token', variable: 'API_TOKEN'),
                     string(credentialsId: 'oauth-client-id', variable: 'OAUTH_CLIENT_ID'),
                     string(credentialsId: 'oauth-client-secret', variable: 'OAUTH_CLIENT_SECRET'),
                     string(credentialsId: 'qa-base-url', variable: 'BASE_URL'),
                     string(credentialsId: 'api-base-url', variable: 'API_BASE_URL')
                 ]) {
-                    sh """
-                        docker run --rm \
-                            -e CI=true \
-                            -e ENV=qa \
-                            -e BASE_URL=${BASE_URL} \
-                            -e USERNAME=${USERNAME} \
-                            -e PASSWORD=${PASSWORD} \
-                            -e API_BASE_URL=${API_BASE_URL} \
-                            -e API_TOKEN=${API_TOKEN} \
-                            -e OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID} \
-                            -e OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET} \
-                            -e GRANT_TYPE=client_credentials \
-                            -v \${WORKSPACE}/reports-qa/html:/app/reports/html-report \
-                            -v \${WORKSPACE}/allure-results-qa:/app/allure-results \
-                            ${DOCKER_IMAGE} \
+                    bat """
+                        docker run --rm ^
+                            -e CI=true ^
+                            -e ENV=qa ^
+                            -e BASE_URL=${BASE_URL} ^
+                            -e APPUSERNAME=${APPUSERNAME} ^
+                            -e PASSWORD=${PASSWORD} ^
+                            -e API_BASE_URL=${API_BASE_URL} ^
+                            -e API_TOKEN=${API_TOKEN} ^
+                            -e OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID} ^
+                            -e OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET} ^
+                            -e GRANT_TYPE=client_credentials ^
+                            -v "%WORKSPACE%/reports-qa/html:/app/reports/html-report" ^
+                            -v "%WORKSPACE%/allure-results-qa:/app/allure-results" ^
+                            ${DOCKER_IMAGE} ^
                             npx playwright test --project=chromium
                     """
                 }
             }
             post {
                 always {
-                    sh 'mkdir -p reports-qa/allure'
-                    sh 'npx allure generate allure-results-qa --clean -o reports-qa/allure || true'
                     publishHTML(target: [
                         reportName: 'QA Regression - PW HTML Report',
                         reportDir: 'reports-qa/html',
@@ -202,13 +188,7 @@ pipeline {
                         keepAll: true,
                         alwaysLinkToLastBuild: true
                     ])
-                    publishHTML(target: [
-                        reportName: 'QA Regression - Allure Report',
-                        reportDir: 'reports-qa/allure',
-                        reportFiles: 'index.html',
-                        keepAll: true,
-                        alwaysLinkToLastBuild: true
-                    ])
+                    allure includeProperties: false, jdk: '', results: [[path: 'allure-results-qa']]
                 }
             }
         }
@@ -227,39 +207,37 @@ pipeline {
                 echo "========================================="
                 echo "  Running SANITY @smoke on STAGE (Docker)"
                 echo "========================================="
-                sh 'mkdir -p reports-stage/html allure-results-stage'
+                bat 'if not exist "reports-stage\\html" mkdir "reports-stage\\html" && if not exist "allure-results-stage" mkdir "allure-results-stage"'
                 withCredentials([
                     usernamePassword(credentialsId: 'stage-credentials',
-                        usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD'),
+                        usernameVariable: 'APPUSERNAME', passwordVariable: 'PASSWORD'),
                     string(credentialsId: 'api-token', variable: 'API_TOKEN'),
                     string(credentialsId: 'oauth-client-id', variable: 'OAUTH_CLIENT_ID'),
                     string(credentialsId: 'oauth-client-secret', variable: 'OAUTH_CLIENT_SECRET'),
                     string(credentialsId: 'stage-base-url', variable: 'BASE_URL'),
                     string(credentialsId: 'api-base-url', variable: 'API_BASE_URL')
                 ]) {
-                    sh """
-                        docker run --rm \
-                            -e CI=true \
-                            -e ENV=stage \
-                            -e BASE_URL=${BASE_URL} \
-                            -e USERNAME=${USERNAME} \
-                            -e PASSWORD=${PASSWORD} \
-                            -e API_BASE_URL=${API_BASE_URL} \
-                            -e API_TOKEN=${API_TOKEN} \
-                            -e OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID} \
-                            -e OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET} \
-                            -e GRANT_TYPE=client_credentials \
-                            -v \${WORKSPACE}/reports-stage/html:/app/reports/html-report \
-                            -v \${WORKSPACE}/allure-results-stage:/app/allure-results \
-                            ${DOCKER_IMAGE} \
+                    bat """
+                        docker run --rm ^
+                            -e CI=true ^
+                            -e ENV=stage ^
+                            -e BASE_URL=${BASE_URL} ^
+                            -e APPUSERNAME=${APPUSERNAME} ^
+                            -e PASSWORD=${PASSWORD} ^
+                            -e API_BASE_URL=${API_BASE_URL} ^
+                            -e API_TOKEN=${API_TOKEN} ^
+                            -e OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID} ^
+                            -e OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET} ^
+                            -e GRANT_TYPE=client_credentials ^
+                            -v "%WORKSPACE%/reports-stage/html:/app/reports/html-report" ^
+                            -v "%WORKSPACE%/allure-results-stage:/app/allure-results" ^
+                            ${DOCKER_IMAGE} ^
                             npx playwright test --project=chromium --grep @smoke
                     """
                 }
             }
             post {
                 always {
-                    sh 'mkdir -p reports-stage/allure'
-                    sh 'npx allure generate allure-results-stage --clean -o reports-stage/allure || true'
                     publishHTML(target: [
                         reportName: 'STAGE Sanity - PW HTML Report',
                         reportDir: 'reports-stage/html',
@@ -267,13 +245,7 @@ pipeline {
                         keepAll: true,
                         alwaysLinkToLastBuild: true
                     ])
-                    publishHTML(target: [
-                        reportName: 'STAGE Sanity - Allure Report',
-                        reportDir: 'reports-stage/allure',
-                        reportFiles: 'index.html',
-                        keepAll: true,
-                        alwaysLinkToLastBuild: true
-                    ])
+                    allure includeProperties: false, jdk: '', results: [[path: 'allure-results-stage']]
                 }
             }
         }
@@ -285,7 +257,7 @@ pipeline {
             steps {
                 input message: 'Deploy to PROD?',
                     ok: 'Yes, Deploy!',
-                    submitter: 'admin,naveen'
+                    submitter: 'onkar'
             }
         }
 
@@ -300,39 +272,37 @@ pipeline {
                 echo "========================================="
                 echo "  Running SMOKE @smoke on PROD (Docker)"
                 echo "========================================="
-                sh 'mkdir -p reports-prod/html allure-results-prod'
+                bat 'if not exist "reports-prod\\html" mkdir "reports-prod\\html" && if not exist "allure-results-prod" mkdir "allure-results-prod"'
                 withCredentials([
                     usernamePassword(credentialsId: 'prod-credentials',
-                        usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD'),
+                        usernameVariable: 'APPUSERNAME', passwordVariable: 'PASSWORD'),
                     string(credentialsId: 'api-token', variable: 'API_TOKEN'),
                     string(credentialsId: 'oauth-client-id', variable: 'OAUTH_CLIENT_ID'),
                     string(credentialsId: 'oauth-client-secret', variable: 'OAUTH_CLIENT_SECRET'),
                     string(credentialsId: 'prod-base-url', variable: 'BASE_URL'),
                     string(credentialsId: 'api-base-url', variable: 'API_BASE_URL')
                 ]) {
-                    sh """
-                        docker run --rm \
-                            -e CI=true \
-                            -e ENV=prod \
-                            -e BASE_URL=${BASE_URL} \
-                            -e USERNAME=${USERNAME} \
-                            -e PASSWORD=${PASSWORD} \
-                            -e API_BASE_URL=${API_BASE_URL} \
-                            -e API_TOKEN=${API_TOKEN} \
-                            -e OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID} \
-                            -e OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET} \
-                            -e GRANT_TYPE=client_credentials \
-                            -v \${WORKSPACE}/reports-prod/html:/app/reports/html-report \
-                            -v \${WORKSPACE}/allure-results-prod:/app/allure-results \
-                            ${DOCKER_IMAGE} \
+                    bat """
+                        docker run --rm ^
+                            -e CI=true ^
+                            -e ENV=prod ^
+                            -e BASE_URL=${BASE_URL} ^
+                            -e APPUSERNAME=${APPUSERNAME} ^
+                            -e PASSWORD=${PASSWORD} ^
+                            -e API_BASE_URL=${API_BASE_URL} ^
+                            -e API_TOKEN=${API_TOKEN} ^
+                            -e OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID} ^
+                            -e OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET} ^
+                            -e GRANT_TYPE=client_credentials ^
+                            -v "%WORKSPACE%/reports-prod/html:/app/reports/html-report" ^
+                            -v "%WORKSPACE%/allure-results-prod:/app/allure-results" ^
+                            ${DOCKER_IMAGE} ^
                             npx playwright test --project=chromium --grep @smoke
                     """
                 }
             }
             post {
                 always {
-                    sh 'mkdir -p reports-prod/allure'
-                    sh 'npx allure generate allure-results-prod --clean -o reports-prod/allure || true'
                     publishHTML(target: [
                         reportName: 'PROD Smoke - PW HTML Report',
                         reportDir: 'reports-prod/html',
@@ -340,13 +310,7 @@ pipeline {
                         keepAll: true,
                         alwaysLinkToLastBuild: true
                     ])
-                    publishHTML(target: [
-                        reportName: 'PROD Smoke - Allure Report',
-                        reportDir: 'reports-prod/allure',
-                        reportFiles: 'index.html',
-                        keepAll: true,
-                        alwaysLinkToLastBuild: true
-                    ])
+                    allure includeProperties: false, jdk: '', results: [[path: 'allure-results-prod']]
                 }
             }
         }
@@ -382,7 +346,7 @@ pipeline {
 
                 // Email Notification
                 emailext(
-                    to: 'naveenanimation20@gmail.com,training@naveenautomationlabs.com',
+                    to: 'onkar.undale@gmail.com',
                     subject: "🎭 CI/CD (Docker) — ${statusEmoji} ${buildStatus} — Build #${env.BUILD_NUMBER}",
                     mimeType: 'text/html',
                     body: """
@@ -410,7 +374,7 @@ pipeline {
                                     <a href="${env.BUILD_URL}console" style="display: inline-block; padding: 10px 20px; background: #6c757d; color: white; text-decoration: none; border-radius: 6px; margin: 4px;">🔍 Console Logs</a>
                                 </div>
                                 <div style="text-align: center; padding: 16px; color: #999; font-size: 12px;">
-                                    Naveen Automation Labs | Playwright Framework
+                                    Playwright Framework
                                 </div>
                             </div>
                         </body>
@@ -420,7 +384,7 @@ pipeline {
             }
 
             // Cleanup Docker image after pipeline
-            sh "docker rmi ${DOCKER_IMAGE} || true"
+            bat "docker rmi ${DOCKER_IMAGE} || exit 0"
         }
         success {
             echo '═══════════════════════════════════════════'
